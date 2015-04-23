@@ -1,0 +1,19 @@
+{
+  "name": "meadowlark",
+  "version": "0.0.1",
+  "description": "Meadowlark travel",
+  "main": "meadowlark.js",
+  "dependencies": {
+    "express": "~4.12.3",
+    "express-handlebars": "~2.0.1"
+  },
+  "devDependencies": {
+    "mocha": "~2.2.4",
+    "chai": "~2.3.0"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Jim Bark",
+  "license": "GPL-3.0"
+}
