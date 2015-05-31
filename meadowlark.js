@@ -8,6 +8,7 @@ var cookieParser = require('cookie-parser');
 var expressSession = require('express-session');
 var nodemailer = require('nodemailer');
 var htmlToText = require('nodemailer-html-to-text').htmlToText;
+var http = require('http');
 
 var app = express();
 
@@ -39,6 +40,50 @@ app.engine('handlebars', handlebars.engine);
 app.set('view engine', 'handlebars');
 
 app.set('port', process.env.PORT || 3000);
+
+app.use(function(req, res, next){
+    // create a domain for this request
+    var domain = require('domain').create();
+    // handle errors on this domain
+    domain.on('error', function(err){
+        console.error('DOMAIN ERROR CAUGHT\n', err.stack);
+        try {
+            // failsafe shutdown in 5 seconds
+            setTimeout(function(){
+                console.error('Failsafe shutdown.');
+                process.exit(1);
+            }, 5000);
+            // disconnect from the cluster
+            var worker = require('cluster').worker;
+            if(worker) worker.disconnect();
+
+            // stop taking new requests
+            server.close();
+
+            try {
+                // attempt to use Express error route
+                next(err);
+            } catch(e){
+                // if Express error route failed, try
+                // plain Node response
+                console.error('Express error mechanism failed.\n', e.stack);
+                res.statusCode = 500;
+                res.setHeader('content-type', 'text/plain');
+                res.end('Server error.');
+            }
+        } catch(e){
+            console.error('Unable to send 500 response.\n', e.stack);
+        }
+    });
+
+    // add the request and response objects to the domain
+    domain.add(req);
+    domain.add(res);
+
+    // execute the rest of the request chain in the domain
+    domain.run(next);
+
+});
 
 app.use(express.static(__dirname + '/public'));
 
@@ -95,10 +140,12 @@ app.use(function(req,res,next){
     next();
 });
 
+// route for homepage
 app.get('/', function(req, res){
         res.render('home');
 });
 
+// route for about page, includes fortune cookie as module exmaple
 app.get('/about', function(req, res){
         res.render('about', { 
 	    fortune: fortune.getFortune(),
@@ -114,6 +161,7 @@ app.get('/tours/request-group-rate', function(req, res){
         res.render('tours/request-group-rate');
 });
 
+// route for Newsletter subscription which has form submission
 app.get('/newsletter', function(req, res){
     // we will learn about CSRF later...for now, we just
     // provide a dummy value
@@ -144,6 +192,7 @@ app.post('/process', function(req, res){
     }
 });
 
+// thankyou page to demonstrate flash messages
 app.get('/thank-you', function(req, res){
     // display flash message; just a test that flash messages work
     // first page load of session will not show any message, 2nd one
@@ -156,10 +205,12 @@ app.get('/thank-you', function(req, res){
     res.render('thank-you');
 });
 
+// route to check that jquery has been loaded
 app.get('/jquery-test', function(req, res){
         res.render('jquery-test');
 });
 
+// route for photo upload page
 app.get('/contest/vacation-photo',function(req,res){
     var now = new Date();
     res.render('contest/vacation-photo',{
@@ -167,7 +218,7 @@ app.get('/contest/vacation-photo',function(req,res){
     });
 });
 
-// route for phot upload form submission, using route parameters :xxxx
+// route for photo upload form submission, using route parameters :xxxx
 app.post('/contest/vacation-photo/:year/:month', function(req, res){
     var form = new formidable.IncomingForm();
     form.parse(req, function(err, fields, files){
@@ -188,36 +239,36 @@ app.get('/headers', function(req,res){
     res.send(s);
 });
 
-// page that sends an email when viewed
-app.get('/email', function(req, res){
-    // setup e-mail data with unicode symbols 
-    var mailOptions = {
-        from: 'Meadowlark Travel <info@meadowlarktravel.com>',  // sender address
-        to: 'jimbark007@gmail.com',  // list of receivers 
-        subject: 'Your Meadowlark Travel Tour',   // Subject line 
-	html: '<h1>Meadowlark Travel</h1>\n<p>Thanks for your booking <strong>' +
-	      'We look forward to your visit.</strong></p>' +
-	      // site is not live so must use placeholder image until then
-	      //'<p>here is our logo: <img src="//site-name/email/confgen_logo.png" ' +
-	      '<p>here is our logo: <img src="http://placehold.it/100x100" ' +
-	      'alt="Meadowlark Travel"></p> ',   // html body
-	// as we are testing html to text conversion comment out text: section
-        //text: 'Thank you for booking your trip with Meadowlark Travel.  ' +
-        //        'We look forward to your visit!',   // plaintext body 
-    };
-    // send mail with defined transport object 
-    transporter.sendMail(mailOptions, function(error, info){
-	if(error){
-            console.log('Unable to send email ' + error.message);
-	}else{
-            console.log('Email sent: ' + info.response);
-	}
-    });
-    res.render('email');
-});
+// page that sends an email when viewed; commented out to avoid emailing during QA grunt tests
+//app.get('/email', function(req, res){
+//    // setup e-mail data with unicode symbols 
+//    var mailOptions = {
+//        from: 'Meadowlark Travel <info@meadowlarktravel.com>',  // sender address
+//        to: 'jimbark007@gmail.com',  // list of receivers 
+//        subject: 'Your Meadowlark Travel Tour',   // Subject line 
+//	html: '<h1>Meadowlark Travel</h1>\n<p>Thanks for your booking <strong>' +
+//	      'We look forward to your visit.</strong></p>' +
+//	      // site is not live so must use placeholder image until then
+//	      //'<p>here is our logo: <img src="//site-name/email/confgen_logo.png" ' +
+//	      '<p>here is our logo: <img src="http://placehold.it/100x100" ' +
+//	      'alt="Meadowlark Travel"></p> ',   // html body
+//	// as we are testing html to text conversion comment out text: section
+//        //text: 'Thank you for booking your trip with Meadowlark Travel.  ' +
+//        //        'We look forward to your visit!',   // plaintext body 
+//    };
+//    // send mail with defined transport object 
+//    transporter.sendMail(mailOptions, function(error, info){
+//	if(error){
+//            console.log('Unable to send email ' + error.message);
+//	}else{
+//            console.log('Email sent: ' + info.response);
+//	}
+//    });
+//    res.render('email');
+//});
 
 // route that sends an email using handlebars template when viewed
-// dont have a page setup to trigger this post reuqest, so use Postman in Chrome
+// dont have a page setup to trigger this post request, so use Postman in Chrome
 app.post('/cart/checkout', function(req, res){
     // normally get cart from session, manually create it here for testing
     //var cart = req.session.cart;
@@ -263,6 +314,12 @@ app.post('/cart/checkout', function(req, res){
     res.render('cart-thank-you', { cart: cart});
 });
 
+// route to trigger asynch uncaught error - commented out to avoid crash when running grunt
+//app.get('/epic-fail', function(req, res){
+//    process.nextTick(function(){
+//        throw new Error('Kaboom!');
+//    });
+//});
 
 // custom 404 page
 app.use(function(req, res, next){
@@ -277,14 +334,9 @@ app.use(function(err, req, res, next){
         res.render('500');
 });
 
-//app.listen(app.get('port'), function(){
-//  console.log( 'Express started in ' + app.get('env') + 
-//    ' mode on http://localhost:' +
-//    app.get('port') + '; press Ctrl-C to terminate.' );
-//});
 
 function startServer(){
-    app.listen(app.get('port'), function(){
+    http.createServer(app).listen(app.get('port'), function(){
 	console.log( 'Express started in ' + app.get('env') + 
 		' mode on http://localhost:' +
 		app.get('port') + '; press Ctrl-C to terminate.' );
