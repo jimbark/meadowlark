@@ -15,7 +15,8 @@
     "nodemailer-express-handlebars": "~1.0.0",
     "express-logger": "0.0.3",
     "morgan": "~1.5.3",
-    "loadtest": "~1.2.11"
+    "loadtest": "~1.2.11",
+    "mongoose": "~4.0.4"
   },
   "devDependencies": {
     "mocha": "~2.2.4",

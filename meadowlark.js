@@ -9,6 +9,12 @@ var expressSession = require('express-session');
 var nodemailer = require('nodemailer');
 var htmlToText = require('nodemailer-html-to-text').htmlToText;
 var http = require('http');
+var fs = require('fs');
+var mongoose = require('mongoose');
+
+// import Mongoose models
+var Vacation = require('./models/vacation.js');
+var VacationInSeasonListener = require('./models/vacationInSeasonListener.js');
 
 var app = express();
 
@@ -41,6 +47,76 @@ app.set('view engine', 'handlebars');
 
 app.set('port', process.env.PORT || 3000);
 
+// setup MongoDB using Mongolabs service
+// connection options
+var opts = {
+    server: {
+       // prevent database connection errors for long-running applications
+       socketOptions: { keepAlive: 1 }
+    }
+};
+// make connection to database
+switch(app.get('env')){
+    case 'development':
+        mongoose.connect(credentials.mongo.development.connectionString, opts);
+        break;
+    case 'production':
+        mongoose.connect(credentials.mongo.production.connectionString, opts);
+        break;
+    default:
+        throw new Error('Unknown execution environment: ' + app.get('env'));
+}
+// enter seed data  NOTE: app-cluster means get two copies of each entry !!
+Vacation.find(function(err, vacations){
+    if(vacations.length) return;
+
+    new Vacation({
+        name: 'Hood River Day Trip',
+        slug: 'hood-river-day-trip',
+        category: 'Day Trip',
+        sku: 'HR199',
+        description: 'Spend a day sailing on the Columbia and ' +
+            'enjoying craft beers in Hood River!',
+        priceInCents: 9995,
+        tags: ['day trip', 'hood river', 'sailing', 'windsurfing', 'breweries'],
+        inSeason: true,
+        maximumGuests: 16,
+        available: true,
+        packagesSold: 0,
+    }).save();
+
+    new Vacation({
+        name: 'Oregon Coast Getaway',
+        slug: 'oregon-coast-getaway',
+        category: 'Weekend Getaway',
+        sku: 'OC39',
+        description: 'Enjoy the ocean air and quaint coastal towns!',
+        priceInCents: 269995,
+        tags: ['weekend getaway', 'oregon coast', 'beachcombing'],
+        inSeason: false,
+        maximumGuests: 8,
+        available: true,
+        packagesSold: 0,
+   }).save();
+
+    new Vacation({
+        name: 'Rock Climbing in Bend',
+        slug: 'rock-climbing-in-bend',
+        category: 'Adventure',
+        sku: 'B99',
+        description: 'Experience the thrill of climbing in the high desert.',
+        priceInCents: 289995,
+        tags: ['weekend getaway', 'bend', 'high desert', 'rock climbing'],
+        inSeason: true,
+        requiresWaiver: true,
+        maximumGuests: 4,
+        available: false,
+        packagesSold: 0,
+        notes: 'The tour guide is currently recovering from a skiing accident.',
+    }).save();
+});
+
+// setup domains for resilience, to handle uncaught exceptions
 app.use(function(req, res, next){
     // create a domain for this request
     var domain = require('domain').create();
@@ -161,6 +237,61 @@ app.get('/tours/request-group-rate', function(req, res){
         res.render('tours/request-group-rate');
 });
 
+// vacations page which accesses entries in mongodb database
+app.get('/vacations', function(req, res){
+
+    // for debugging print out the contents of dbase
+    //Vacation.find(function(err, vacations){
+    //      console.log(vacations);
+    //});
+    
+    Vacation.find({ available: true }, function(err, vacs){
+        var context = {
+            vacations: vacs.map(function(vacation){
+                return {
+                    sku: vacation.sku,
+                    name: vacation.name,
+                    description: vacation.description,
+                    price: vacation.getDisplayPrice(),
+                    inSeason: vacation.inSeason,
+                };
+            }),
+        };
+    res.render('vacations', context);
+    });
+});
+
+// request to be notified when a vacation beocmes available
+app.get('/notify-me-when-in-season', function(req, res){
+    res.render('notify-me-when-in-season', { sku: req.query.sku });
+});
+
+// handle the post request sent from form in route above
+app.post('/notify-me-when-in-season', function(req, res){
+    VacationInSeasonListener.update(
+        { email: req.body.email },
+        { $push: { skus: req.body.sku } },
+        { upsert: true },
+        function(err){
+            if(err) {
+                console.error(err.stack);
+                req.session.flash = {
+                    type: 'danger',
+                    intro: 'Ooops!',
+                    message: 'There was an error processing your request.',
+                };
+                return res.redirect(303, '/vacations');
+            }
+            req.session.flash = {
+                type: 'success',
+                intro: 'Thank you!',
+                message: 'You will be notified when this vacation is in season.',
+            };
+            return res.redirect(303, '/vacations');
+        }
+    );
+});
+
 // route for Newsletter subscription which has form submission
 app.get('/newsletter', function(req, res){
     // we will learn about CSRF later...for now, we just
@@ -210,6 +341,20 @@ app.get('/jquery-test', function(req, res){
         res.render('jquery-test');
 });
 
+
+// Photo submission: 
+// make sure data directory exists
+var dataDir = __dirname + '/data';
+var vacationPhotoDir = dataDir + '/vacation-photo';
+/* jshint -W030 */
+fs.existsSync(dataDir) || fs.mkdirSync(dataDir);
+fs.existsSync(vacationPhotoDir) || fs.mkdirSync(vacationPhotoDir);
+/* jshint +W030 */
+
+function saveContestEntry(contestName, email, year, month, photoPath){
+    // TODO...this will come later
+}
+
 // route for photo upload page
 app.get('/contest/vacation-photo',function(req,res){
     var now = new Date();
@@ -223,13 +368,45 @@ app.post('/contest/vacation-photo/:year/:month', function(req, res){
     var form = new formidable.IncomingForm();
     form.parse(req, function(err, fields, files){
         if(err) return res.redirect(303, '/error');
-        console.log('received fields:');
-        console.log(fields);
-        console.log('received files:');
-        console.log(files);
-        res.redirect(303, '/thank-you');
+
+        if(err) {
+            res.session.flash = {
+                type: 'danger',
+                intro: 'Oops!',
+                message: 'There was an error processing your submission. ' +
+                    'Pelase try again.',
+            };
+            return res.redirect(303, '/contest/vacation-photo');
+        }
+        var photo = files.photo;
+        var dir = vacationPhotoDir + '/' + Date.now();
+        var path = dir + '/' + photo.name;
+        fs.mkdirSync(dir);
+        fs.renameSync(photo.path, dir + '/' + photo.name);
+        saveContestEntry('vacation-photo', fields.email,
+            req.params.year, req.params.month, path);
+        req.session.flash = {
+            type: 'success',
+            intro: 'Good luck!',
+            message: 'You have been entered into the contest.',
+        };
+        // commented out as havent created this view yet
+	//return res.redirect(303, '/contest/vacation-photo/entries');
+        return res.redirect(303, '/thank-you');
     });
 });
+// old version - commented out
+//app.post('/contest/vacation-photo/:year/:month', function(req, res){
+//    var form = new formidable.IncomingForm();
+//    form.parse(req, function(err, fields, files){
+//        if(err) return res.redirect(303, '/error');
+//        console.log('received fields:');
+//        console.log(fields);
+//        console.log('received files:');
+//        console.log(files);
+//        res.redirect(303, '/thank-you');
+//    });
+//});
 
 // page that displays headers, just for diagnostics/learning
 app.get('/headers', function(req,res){
