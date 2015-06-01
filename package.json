@@ -19,7 +19,8 @@
     "mongoose": "~4.0.4",
     "connect": "~2.29.2",
     "connect-mongo": "~0.8.1",
-    "cors": "~2.7.1"
+    "cors": "~2.7.1",
+    "connect-rest": "~1.8.2"
   },
   "devDependencies": {
     "mocha": "~2.2.4",

@@ -18,6 +18,7 @@ var http = require('http');
 var fs = require('fs');
 var mongoose = require('mongoose');
 var mongoStore = require('connect-mongo')(expressSession);
+var rest = require('connect-rest');
 
 // import Mongoose models
 // var Vacation = require('./models/vacation.js');
@@ -235,8 +236,11 @@ app.use(function(req,res,next){
 // import website routes
 require('./routes.js')(app);
 
-// import api routes
-require('./apiroutes.js')(app);
+// import native Express API routes
+//require('./apiroutes.js')(app);
+
+// import Connect-REST API routes
+require('./apiRestRoutes.js')(rest);
 
 
 // route for homepage
@@ -559,6 +563,28 @@ function convertFromUSD(value, currency){
 //        throw new Error('Kaboom!');
 //    });
 //});
+
+// API configuration, imcluding using a separate domain
+var apiOptions = {
+    context: '',
+    domain: require('domain').create(),
+};
+
+// handle API domain errors
+apiOptions.domain.on('error', function(err){
+    console.log('API domain error.\n', err.stack);
+    setTimeout(function(){
+        console.log('Server shutting down after API domain error.');
+        process.exit(1);
+    }, 5000);
+    server.close();
+    var worker = require('cluster').worker;
+    if(worker) worker.disconnect();
+});
+
+// link API into pipeline
+app.use(rest.rester(apiOptions));
+
 
 // custom 404 page
 app.use(function(req, res, next){
