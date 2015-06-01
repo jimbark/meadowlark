@@ -11,6 +11,7 @@ var htmlToText = require('nodemailer-html-to-text').htmlToText;
 var http = require('http');
 var fs = require('fs');
 var mongoose = require('mongoose');
+var mongoStore = require('connect-mongo')(expressSession);
 
 // import Mongoose models
 var Vacation = require('./models/vacation.js');
@@ -66,7 +67,8 @@ switch(app.get('env')){
     default:
         throw new Error('Unknown execution environment: ' + app.get('env'));
 }
-// enter seed data  NOTE: app-cluster means get two copies of each entry !!
+
+// enter MongoDB seed data  NOTE: app-cluster means get two copies of each entry !!
 Vacation.find(function(err, vacations){
     if(vacations.length) return;
 
@@ -167,10 +169,12 @@ app.use(bodyParser.urlencoded({ extended: false }));
 
 app.use(cookieParser(credentials.cookieSecret));
 
+// use session store running against MongoDB
 app.use(expressSession({
     secret: credentials.cookieSecret,
     resave: false,
-    saveUninitialized: false
+    saveUninitialized: false,
+    store: new mongoStore({ mongooseConnection: mongoose.connection }),
 }));
 
 app.use(function(req, res, next){
@@ -237,27 +241,69 @@ app.get('/tours/request-group-rate', function(req, res){
         res.render('tours/request-group-rate');
 });
 
-// vacations page which accesses entries in mongodb database
-app.get('/vacations', function(req, res){
+// provide option to select currency and have it retained in session
+app.get('/set-currency/:currency', function(req,res){
+    req.session.currency = req.params.currency;
+    return res.redirect(303, '/vacations');
+});
 
-    // for debugging print out the contents of dbase
-    //Vacation.find(function(err, vacations){
-    //      console.log(vacations);
-    //});
-    
-    Vacation.find({ available: true }, function(err, vacs){
+function convertFromUSD(value, currency){
+    switch(currency){
+        case 'USD': return value * 1;
+        case 'GBP': return value * 0.6;
+        case 'BTC': return value * 0.0023707918444761;
+        default: return NaN;
+    }
+}
+
+// vacations page which accesses entries in mongodb database
+//app.get('/vacations', function(req, res){
+//
+//    // for debugging print out the contents of dbase
+//    //Vacation.find(function(err, vacations){
+//    //      console.log(vacations);
+//    //});
+//    
+//    Vacation.find({ available: true }, function(err, vacs){
+//        var context = {
+//            vacations: vacs.map(function(vacation){
+//                return {
+//                    sku: vacation.sku,
+//                    name: vacation.name,
+//                    description: vacation.description,
+//                    price: vacation.getDisplayPrice(),
+//                    inSeason: vacation.inSeason,
+//                };
+//            }),
+//        };
+//    res.render('vacations', context);
+//    });
+//});
+
+// vacations page which accesses entries in mongodb database, updated 
+// to include currency setting option 
+app.get('/vacations', function(req, res){
+    Vacation.find({ available: true }, function(err, vacations){
+        var currency = req.session.currency || 'USD';
         var context = {
-            vacations: vacs.map(function(vacation){
+            currency: currency,
+            vacations: vacations.map(function(vacation){
                 return {
                     sku: vacation.sku,
                     name: vacation.name,
                     description: vacation.description,
-                    price: vacation.getDisplayPrice(),
                     inSeason: vacation.inSeason,
+                    price: convertFromUSD(vacation.priceInCents/100, currency),
+                    qty: vacation.qty,
                 };
             }),
         };
-    res.render('vacations', context);
+        switch(currency){
+            case 'USD': context.currencyUSD = 'selected'; break;
+            case 'GBP': context.currencyGBP = 'selected'; break;
+            case 'BTC': context.currencyBTC = 'selected'; break;
+        }
+        res.render('vacations', context);
     });
 });
 
