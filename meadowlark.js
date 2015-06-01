@@ -1,3 +1,9 @@
+// TODO
+//  remove commented out sections
+//  cleanup handlers files and add standard comments format
+//  
+
+
 var express = require('express');
 var fortune = require('./lib/fortune.js');
 var weather = require('./lib/weather.js');
@@ -6,21 +12,21 @@ var formidable = require('formidable');
 var credentials = require('./credentials.js');
 var cookieParser = require('cookie-parser');
 var expressSession = require('express-session');
-var nodemailer = require('nodemailer');
-var htmlToText = require('nodemailer-html-to-text').htmlToText;
+//var nodemailer = require('nodemailer');
+//var htmlToText = require('nodemailer-html-to-text').htmlToText;
 var http = require('http');
 var fs = require('fs');
 var mongoose = require('mongoose');
 var mongoStore = require('connect-mongo')(expressSession);
 
 // import Mongoose models
-var Vacation = require('./models/vacation.js');
-var VacationInSeasonListener = require('./models/vacationInSeasonListener.js');
+// var Vacation = require('./models/vacation.js');
+// var VacationInSeasonListener = require('./models/vacationInSeasonListener.js');
 
 var app = express();
 
 // set Nodemailer transport for sending emails
-var transporter = nodemailer.createTransport({
+/* var transporter = nodemailer.createTransport({
         service: 'Gmail',
         auth: {
                 user: credentials.gmail.user,
@@ -28,6 +34,7 @@ var transporter = nodemailer.createTransport({
         }
 });
 transporter.use('compile', htmlToText());
+*/
 
 // set up handlebars view engine for use with main page views and email templates
 var handlebars = require('express-handlebars').create({
@@ -41,7 +48,7 @@ var handlebars = require('express-handlebars').create({
     }
 });
 
-var VALID_EMAIL_REGEX = /^([\w-]+(?:\.[\w-]+)*)@((?:[\w-]+\.)*\w[\w-]{0,66})\.([a-z]{2,6}(?:\.[a-z]{2})?)$/i;
+//var VALID_EMAIL_REGEX = /^([\w-]+(?:\.[\w-]+)*)@((?:[\w-]+\.)*\w[\w-]{0,66})\.([a-z]{2,6}(?:\.[a-z]{2})?)$/i;
 
 app.engine('handlebars', handlebars.engine);
 app.set('view engine', 'handlebars');
@@ -69,7 +76,7 @@ switch(app.get('env')){
 }
 
 // enter MongoDB seed data  NOTE: app-cluster means get two copies of each entry !!
-Vacation.find(function(err, vacations){
+/* Vacation.find(function(err, vacations){
     if(vacations.length) return;
 
     new Vacation({
@@ -117,6 +124,7 @@ Vacation.find(function(err, vacations){
         notes: 'The tour guide is currently recovering from a skiing accident.',
     }).save();
 });
+*/
 
 // setup domains for resilience, to handle uncaught exceptions
 app.use(function(req, res, next){
@@ -177,6 +185,9 @@ app.use(expressSession({
     store: new mongoStore({ mongooseConnection: mongoose.connection }),
 }));
 
+// Allow cross origin access, but to only the API routes
+app.use('/api', require('cors')());
+
 app.use(function(req, res, next){
         res.locals.showTests = app.get('env') !== 'production' &&
                 req.query.test === '1';
@@ -220,33 +231,48 @@ app.use(function(req,res,next){
     next();
 });
 
+
+// import website routes
+require('./routes.js')(app);
+
+// import api routes
+require('./apiroutes.js')(app);
+
+
 // route for homepage
-app.get('/', function(req, res){
+/* app.get('/', function(req, res){
         res.render('home');
 });
+*/
 
 // route for about page, includes fortune cookie as module exmaple
-app.get('/about', function(req, res){
+/* app.get('/about', function(req, res){
         res.render('about', { 
 	    fortune: fortune.getFortune(),
 	    pageTestScript: '/qa/tests-about.js'
         });
 });
+*/
 
-app.get('/tours/hood-river', function(req, res){
+/* app.get('/tours/hood-river', function(req, res){
         res.render('tours/hood-river');
 });
+*/
 
-app.get('/tours/request-group-rate', function(req, res){
+/* app.get('/tours/request-group-rate', function(req, res){
         res.render('tours/request-group-rate');
 });
+*/
+
 
 // provide option to select currency and have it retained in session
-app.get('/set-currency/:currency', function(req,res){
+/* app.get('/set-currency/:currency', function(req,res){
     req.session.currency = req.params.currency;
     return res.redirect(303, '/vacations');
 });
+*/
 
+/*
 function convertFromUSD(value, currency){
     switch(currency){
         case 'USD': return value * 1;
@@ -255,34 +281,11 @@ function convertFromUSD(value, currency){
         default: return NaN;
     }
 }
-
-// vacations page which accesses entries in mongodb database
-//app.get('/vacations', function(req, res){
-//
-//    // for debugging print out the contents of dbase
-//    //Vacation.find(function(err, vacations){
-//    //      console.log(vacations);
-//    //});
-//    
-//    Vacation.find({ available: true }, function(err, vacs){
-//        var context = {
-//            vacations: vacs.map(function(vacation){
-//                return {
-//                    sku: vacation.sku,
-//                    name: vacation.name,
-//                    description: vacation.description,
-//                    price: vacation.getDisplayPrice(),
-//                    inSeason: vacation.inSeason,
-//                };
-//            }),
-//        };
-//    res.render('vacations', context);
-//    });
-//});
+*/
 
 // vacations page which accesses entries in mongodb database, updated 
 // to include currency setting option 
-app.get('/vacations', function(req, res){
+/* app.get('/vacations', function(req, res){
     Vacation.find({ available: true }, function(err, vacations){
         var currency = req.session.currency || 'USD';
         var context = {
@@ -306,14 +309,16 @@ app.get('/vacations', function(req, res){
         res.render('vacations', context);
     });
 });
+*/
 
 // request to be notified when a vacation beocmes available
-app.get('/notify-me-when-in-season', function(req, res){
+/* app.get('/notify-me-when-in-season', function(req, res){
     res.render('notify-me-when-in-season', { sku: req.query.sku });
 });
+*/
 
 // handle the post request sent from form in route above
-app.post('/notify-me-when-in-season', function(req, res){
+/* app.post('/notify-me-when-in-season', function(req, res){
     VacationInSeasonListener.update(
         { email: req.body.email },
         { $push: { skus: req.body.sku } },
@@ -337,13 +342,15 @@ app.post('/notify-me-when-in-season', function(req, res){
         }
     );
 });
+*/
 
 // route for Newsletter subscription which has form submission
-app.get('/newsletter', function(req, res){
+/* app.get('/newsletter', function(req, res){
     // we will learn about CSRF later...for now, we just
     // provide a dummy value
     res.render('newsletter', { csrf: 'CSRF token goes here' });
 });
+*/
 
 // non-ajax form handling
 //app.post('/process', function(req, res){
@@ -355,7 +362,7 @@ app.get('/newsletter', function(req, res){
 //});
 
 // ajax form-handling
-app.post('/process', function(req, res){
+/* app.post('/process', function(req, res){
     // send success message
     if(req.xhr || req.accepts('json,html')==='json'){
         // send success object if its an AJAX request
@@ -368,9 +375,10 @@ app.post('/process', function(req, res){
         res.redirect(303, '/thank-you');
     }
 });
+*/
 
 // thankyou page to demonstrate flash messages
-app.get('/thank-you', function(req, res){
+/* app.get('/thank-you', function(req, res){
     // display flash message; just a test that flash messages work
     // first page load of session will not show any message, 2nd one
     // will as middleware will have loaded it into res.locals
@@ -381,36 +389,38 @@ app.get('/thank-you', function(req, res){
     };
     res.render('thank-you');
 });
+*/
 
 // route to check that jquery has been loaded
-app.get('/jquery-test', function(req, res){
+/* app.get('/jquery-test', function(req, res){
         res.render('jquery-test');
 });
-
+*/
 
 // Photo submission: 
 // make sure data directory exists
-var dataDir = __dirname + '/data';
-var vacationPhotoDir = dataDir + '/vacation-photo';
-/* jshint -W030 */
-fs.existsSync(dataDir) || fs.mkdirSync(dataDir);
-fs.existsSync(vacationPhotoDir) || fs.mkdirSync(vacationPhotoDir);
-/* jshint +W030 */
+//var dataDir = __dirname + '/data';
+//var vacationPhotoDir = dataDir + '/vacation-photo';
+///* jshint -W030 */
+//fs.existsSync(dataDir) || fs.mkdirSync(dataDir);
+//fs.existsSync(vacationPhotoDir) || fs.mkdirSync(vacationPhotoDir);
+///* jshint +W030 */
 
-function saveContestEntry(contestName, email, year, month, photoPath){
-    // TODO...this will come later
-}
+//function saveContestEntry(contestName, email, year, month, photoPath){
+//    // TODO...this will come later/
+//}
 
 // route for photo upload page
-app.get('/contest/vacation-photo',function(req,res){
+/* app.get('/contest/vacation-photo',function(req,res){
     var now = new Date();
     res.render('contest/vacation-photo',{
         year: now.getFullYear(),month: now.getMonth()
     });
 });
+*/
 
 // route for photo upload form submission, using route parameters :xxxx
-app.post('/contest/vacation-photo/:year/:month', function(req, res){
+/* app.post('/contest/vacation-photo/:year/:month', function(req, res){
     var form = new formidable.IncomingForm();
     form.parse(req, function(err, fields, files){
         if(err) return res.redirect(303, '/error');
@@ -441,6 +451,8 @@ app.post('/contest/vacation-photo/:year/:month', function(req, res){
         return res.redirect(303, '/thank-you');
     });
 });
+*/
+
 // old version - commented out
 //app.post('/contest/vacation-photo/:year/:month', function(req, res){
 //    var form = new formidable.IncomingForm();
@@ -455,12 +467,13 @@ app.post('/contest/vacation-photo/:year/:month', function(req, res){
 //});
 
 // page that displays headers, just for diagnostics/learning
-app.get('/headers', function(req,res){
+/* app.get('/headers', function(req,res){
     res.set('Content-Type','text/plain');
     var s = '';
     for(var name in req.headers) s += name + ': ' + req.headers[name] + '\n';
     res.send(s);
 });
+*/
 
 // page that sends an email when viewed; commented out to avoid emailing during QA grunt tests
 //app.get('/email', function(req, res){
@@ -492,7 +505,7 @@ app.get('/headers', function(req,res){
 
 // route that sends an email using handlebars template when viewed
 // dont have a page setup to trigger this post request, so use Postman in Chrome
-app.post('/cart/checkout', function(req, res){
+/* app.post('/cart/checkout', function(req, res){
     // normally get cart from session, manually create it here for testing
     //var cart = req.session.cart;
     var cart = {};
@@ -506,8 +519,9 @@ app.post('/cart/checkout', function(req, res){
         return res.next(new Error('Invalid email address.'));
     }
     // assign a random cart ID; normally we would use a database ID here
-    cart.number = Math.random().toString().replace(/^0\.0*/, '');
-    cart.billing = {
+*/
+//    cart.number = Math.random().toString().replace(/^0\.0*/, '');
+/*    cart.billing = {
                 name: name,
                 email: email,
     };
@@ -536,6 +550,8 @@ app.post('/cart/checkout', function(req, res){
     // render and send the html for the thank-you page
     res.render('cart-thank-you', { cart: cart});
 });
+*/
+
 
 // route to trigger asynch uncaught error - commented out to avoid crash when running grunt
 //app.get('/epic-fail', function(req, res){
