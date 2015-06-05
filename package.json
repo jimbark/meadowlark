@@ -30,7 +30,11 @@
     "grunt-cafe-mocha": "~0.1.13",
     "grunt-contrib-jshint": "~0.11.2",
     "grunt-exec": "~0.4.6",
-    "restler": "~3.2.2"
+    "restler": "~3.2.2",
+    "grunt-contrib-less": "~1.0.1",
+    "grunt-contrib-uglify": "~0.9.1",
+    "grunt-contrib-cssmin": "~0.12.3",
+    "grunt-hashres": "~0.4.1"
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"

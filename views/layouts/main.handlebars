@@ -8,34 +8,39 @@
 
         <title>Meadowlark Travel</title>
 
-        <link rel="apple-touch-icon" href="img/apple-touch-icon.png">
+        <link rel="apple-touch-icon" href="{{static '/img/apple-touch-icon.png'}}">
 
         <!-- Place favicon.ico in the root directory -->
 	<link rel="shortcut icon" href="favicon.ico">
 
-        <link rel="stylesheet" href="vendor/css/normalize.css">
-        <link rel="stylesheet" href="css/main.css">
-        <script src="vendor/js/modernizr-2.8.3.min.js"></script>
+        <link rel="stylesheet" href="{{static '/vendor/css/normalize.css'}}">
+        <script src="{{static '/vendor/js/modernizr-2.8.3.min.js'}}"></script>
+
+        <!-- bundled and minified css including any from html5 template -->
+	<link href="{{static '/css/meadowlark.min.f89011e3.css'}}" rel="stylesheet">
 
 	<!-- From Bootstrap template -->
-	<link href="vendor/css/bootstrap.min.css" rel="stylesheet">
-	<link href="vendor/css/bootstrap-theme.min.css" rel="stylesheet">
+	<link href="{{static '/vendor/css/bootstrap.min.css'}}" rel="stylesheet">
+	<link href="{{static '/vendor/css/bootstrap-theme.min.css'}}" rel="stylesheet">
 
 	<!-- if query string includes 'tests' then load mocha -->
         {{#if showTests}}
               <link rel="stylesheet" href="/vendor/mocha.css">
         {{/if}}
         
-        {{! jquery temporarily loaded here to allow use with handlebars }}
-        <script src="/vendor/js/jquery-1.11.3.min.js"></script>
+        {{! jquery temporarily loaded here to allow use with handlebars views }}
+        <script src="{{static '/vendor/js/jquery-1.11.3.min.js'}}"></script>
 
 	<!-- From Bootstrap template -->
 	<!-- HTML5 shim and Respond.js for IE8 support of HTML5 elements and media queries -->
 	<!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
 	<!--[if lt IE 9]>
-            <script src=“vendor/js/html5shiv.min.js"></script>                                     
-            <script src=“vendor/js/respond.min.js"></script>  
+            <script src=“{{static '/vendor/js/html5shiv.min.js'}}"></script>                                     
+            <script src=“{{static '/vendor/js/respond.min.js'}}"></script>  
 	<![endif]-->
+
+	<!-- bundled and minified css including any from html5 template -->
+
 
 	<!-- add in any Handlebars head section -->
 	{{{_sections.head}}}
@@ -52,7 +57,7 @@
         <!--  single container for all viewable content   -->
         <div class="container">
 
-            <header><img src="/img/confgen_logo.png" alt="Meadowlark logo"></header>
+            <header><img src="{{static '/img/confgen_logo.png'}}" alt="Meadowlark logo"></header>
 
 	    {{#if flash}}
                 <div class="alert alert-dismissible alert-{{flash.type}}">
@@ -85,11 +90,13 @@
 
         <!-- End of site specific viewable content here -->
 
+	<!-- link in custom bundled and minified js here -->
+        <script src="{{static '/js/meadowlark.min.22837381.js'}}"></script>
+
+        <!-- link in third party bundled and minified js here -->
         <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
-        <script>window.jQuery || document.write('<script src="vendor/js/jquery-1.11.3.min.js"><\/script>')</script>
-        <script src="js/plugins.js"></script>
-        <script src="js/main.js"></script>
-	<script src="vendor/js/bootstrap.min.js"></script>
+        <script>window.jQuery || document.write('<script src="{{static '/vendor/js/jquery-1.11.3.min.js'}}"><\/script>')</script>
+	<script src="{{static '/vendor/js/bootstrap.min.js'}}"></script>
 
 	<!-- add in any Handlebars jquery section -->
 	{{{_sections.jquery}}}

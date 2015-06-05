@@ -1,7 +1,39 @@
 // TODO
+
+//  refactor code for easy static content relocation
+//  move custom css out of html boilerplate files and get them from boilerplates cdn
+//  create .less files for my own css and compile and add to templates/views
+//  same for any custom js
+//  add lint-pattern grunt checks
+
+//  remove jquery load at top file (so need to remove jquery test handlebars view?)
 //  remove commented out sections
 //  cleanup handlers files and add standard comments format
-//  
+//  go through book to identify things to d0
+//  add logging function
+//  add passpprt authentication
+//  develop QA checklist
+//  build redundancy into form handling for contacts or key data
+//  profile and then optimise performance
+//  add share it icons for facebook, twitter etc
+//  google analytics
+//  try google webmaster
+//  update verything to latest versions
+//  record problems in issues list (github?)
+//  develop gitgub based deployment model with staging and development
+//  make use of a real domain name
+//  test backing out changes in production deployment
+//  update/check security around domain registrations
+//  redirect www.name.com to name.com
+//  consider private github repo
+//  test mongodb backups and restores
+//  investigate private npm repos on npm website, or use Sinopia
+//  get a cheap certificate and integrat it, switch site to https
+//  csurf and cross ite scripting protection
+//  add social media sharing buttons from startup course
+//  twitter api access and tweet display
+//  add live weather api calls
+//
 
 
 var express = require('express');
@@ -45,8 +77,11 @@ var handlebars = require('express-handlebars').create({
             if(!this._sections) this._sections = {};
             this._sections[name] = options.fn(this);
             return null;
-        }
-    }
+        },
+	static: function(name) {
+	    return require('./lib/static.js').map(name);
+	},
+    },
 });
 
 //var VALID_EMAIL_REGEX = /^([\w-]+(?:\.[\w-]+)*)@((?:[\w-]+\.)*\w[\w-]{0,66})\.([a-z]{2,6}(?:\.[a-z]{2})?)$/i;

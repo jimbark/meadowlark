@@ -92,16 +92,10 @@ textarea {
 }
 
 /* ==========================================================================
-   Author's custom styles
+   Author's custom styles -> NO, add to main-custom.less so this file can be
+   easily updated whenever html boilerplate is updated
    ========================================================================== */
 
-a.currency {
-    text-decoration: none;
-}
-.currency.selected {
-    font-weight: bold;
-    font-size: 150%;
-}
 
 
 
